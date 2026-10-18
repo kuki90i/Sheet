@@ -3,17 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лист.</title>
+    <title>Лист — Дневник чтения</title>
+    <!-- Иконка сайта -->
     <link rel="icon" href="Logo.svg" type="image/x-icon">
+    
+    <!-- Подключение Firebase (Облако) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <style>
-        /* Современная тёмная цветовая палитра */
         :root {
-            --bg-main: #09090b; /* Глубокий черный */
-            --bg-card: #121214; /* Темно-серый для карточек */
+            --bg-main: #09090b; 
+            --bg-card: #121214; 
             --bg-input: #18181b;
             --text-main: #f4f4f5;
             --text-muted: #a1a1aa;
-            --accent: #818cf8; /* Мягкий неоновый сине-фиолетовый */
+            --accent: #818cf8; 
             --accent-hover: #6366f1;
             --border: 1px solid rgba(255, 255, 255, 0.08);
             --border-hover: 1px solid rgba(255, 255, 255, 0.2);
@@ -21,405 +26,317 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        .container { padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; }
 
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(129, 140, 248, 0); } 100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0); } }
 
-        /* Анимации */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        /* ЭКРАН ВХОДА */
+        #authScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .auth-card { background: var(--bg-card); border: var(--border); border-radius: var(--radius); padding: 32px 24px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        .auth-logo { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .auth-logo span { color: var(--accent); }
+        .auth-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(129, 140, 248, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0); }
-        }
+        #appScreen { display: none; }
+        .card { background: var(--bg-card); border: var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; transition: var(--transition); }
 
-        /* Карточки */
-        .card {
-            background: var(--bg-card);
-            border: var(--border);
-            border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-            transition: var(--transition);
-        }
-
-        .card:hover {
-            border: var(--border-hover);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-        }
-
-        /* Элементы форм */
         input, textarea, select {
-            width: 100%;
-            padding: 14px 16px;
-            background: var(--bg-input);
-            border: var(--border);
-            border-radius: 12px;
-            color: var(--text-main);
-            font-size: 15px;
-            margin-top: 8px;
-            transition: var(--transition);
-            resize: vertical;
+            width: 100%; padding: 14px 16px; background: var(--bg-input); border: var(--border);
+            border-radius: 12px; color: var(--text-main); font-size: 15px; margin-top: 8px; transition: var(--transition); resize: vertical;
         }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15); }
 
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
-        }
-
-        input::placeholder, textarea::placeholder {
-            color: #52525b;
-        }
-
-        /* Кнопки */
         button {
-            background: var(--bg-input);
-            color: var(--text-main);
-            border: var(--border);
-            border-radius: 12px;
-            padding: 14px 20px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            background: var(--bg-input); color: var(--text-main); border: var(--border); border-radius: 12px;
+            padding: 14px 20px; font-size: 15px; font-weight: 500; cursor: pointer; transition: var(--transition);
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         }
+        button:hover { background: #27272a; border-color: rgba(255,255,255,0.3); }
+        button:active { transform: scale(0.98); }
 
-        button:hover {
-            background: #27272a;
-            border-color: rgba(255,255,255,0.3);
-        }
+        .btn-primary { background: var(--accent); color: #fff; border: none; width: 100%; padding: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(129, 140, 248, 0.3); }
+        .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 6px 20px rgba(129, 140, 248, 0.4); }
+        .btn-text { background: transparent; border: none; color: var(--text-muted); font-size: 14px; margin-top: 16px; width: 100%; }
+        .btn-text:hover { color: var(--accent); background: transparent;}
 
-        button:active {
-            transform: scale(0.98);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            width: 100%;
-            padding: 16px;
-            font-size: 16px;
-            font-weight: 600;
-            box-shadow: 0 4px 14px rgba(129, 140, 248, 0.3);
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 6px 20px rgba(129, 140, 248, 0.4);
-            border-color: transparent;
-        }
-
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .logo { font-size: 22px; font-weight: 700; }
+        .logo span { color: var(--accent); }
         .btn-icon { padding: 10px; border-radius: 50%; width: 42px; height: 42px; }
 
-        /* Шапка и навигация */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
+        nav { display: flex; gap: 12px; margin-bottom: 24px; background: var(--bg-card); padding: 6px; border-radius: 16px; border: var(--border); }
+        .nav-btn { flex: 1; background: transparent; border: none; color: var(--text-muted); padding: 10px; border-radius: 10px; }
+        .nav-btn.active { background: var(--bg-input); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
-        .logo { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-main); }
-        .logo span { color: var(--accent); }
-
-        nav {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            background: var(--bg-card);
-            padding: 6px;
-            border-radius: 16px;
-            border: var(--border);
-        }
-
-        .nav-btn {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: 10px;
-            border-radius: 10px;
-        }
-
-        .nav-btn.active {
-            background: var(--bg-input);
-            color: var(--text-main);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        .nav-btn:hover:not(.active) { background: transparent; color: var(--text-main); }
-
-        /* Виды */
         .view { display: none; }
         .view.active { display: block; animation: fadeIn 0.4s ease forwards; }
 
-        /* Секция Сегодня */
-        .header-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .streak { 
-            color: var(--accent); 
-            font-weight: 600; 
-            background: rgba(129, 140, 248, 0.1); 
-            padding: 6px 12px; 
-            border-radius: 20px; 
-        }
-
+        .header-stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 14px; color: var(--text-muted); }
+        .streak { color: var(--accent); font-weight: 600; background: rgba(129, 140, 248, 0.1); padding: 6px 12px; border-radius: 20px; }
         .form-group { margin-bottom: 24px; }
         .form-group label { font-weight: 500; font-size: 14px; color: var(--text-muted); display: block; margin-bottom: 4px;}
         .help-text { font-size: 12px; color: #52525b; margin-top: 4px; }
-        
         .flex-row { display: flex; gap: 12px; align-items: flex-end;}
         .flex-row > div { flex: 1; }
 
-        /* Тест по словарю */
+        /* Тест */
         .quiz-card { border: 1px solid rgba(129, 140, 248, 0.3); background: linear-gradient(145deg, var(--bg-card), #15151a); position: relative; overflow: hidden;}
         .quiz-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--accent); }
-        
         .quiz-empty { text-align: center; padding: 20px 0; color: var(--text-muted); font-size: 14px;}
-        
         .quiz-progress { height: 4px; background: var(--bg-input); border-radius: 2px; overflow: hidden; margin-bottom: 20px;}
         .quiz-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s ease; }
-        
-        .quiz-option { 
-            width: 100%; text-align: left; margin-bottom: 10px; font-weight: 400; 
-            justify-content: flex-start; border-radius: 12px; padding: 16px;
-        }
+        .quiz-option { width: 100%; text-align: left; margin-bottom: 10px; justify-content: flex-start; padding: 16px; }
         .quiz-option.correct { background: rgba(34, 197, 94, 0.15); border-color: #22c55e; color: #4ade80; }
         .quiz-option.wrong { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #f87171; }
 
-        /* Добавление слова */
         .word-toggle { width: 100%; background: transparent; border: 1px dashed rgba(255,255,255,0.2); margin-bottom: 24px; color: var(--text-muted); }
-        .word-toggle:hover { border-color: var(--accent); color: var(--accent); }
-        
-        #addWordForm {
-            display: none; padding: 20px; background: var(--bg-input); border-radius: var(--radius); margin-bottom: 24px;
-            animation: fadeIn 0.3s ease;
-        }
+        #addWordForm { display: none; padding: 20px; background: var(--bg-input); border-radius: var(--radius); margin-bottom: 24px; animation: fadeIn 0.3s ease; }
 
-        /* Списки (История и Словарь) */
-        .list-item {
-            padding: 16px 0; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; transition: var(--transition);
-        }
-        .list-item:hover { transform: translateX(4px); }
-        .list-item:last-child { border-bottom: none; }
+        .list-item { padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px; }
         .item-header { display: flex; justify-content: space-between; align-items: center;}
-        .item-actions button { padding: 6px 12px; font-size: 13px; background: transparent; border: 1px solid var(--border-color); }
-        .item-actions button:hover { border-color: #ef4444; color: #f87171; }
-
-        /* Модалка настроек */
+        .item-actions button { padding: 6px 12px; font-size: 13px; background: transparent; border: 1px solid rgba(255,255,255,0.1); }
+        
         #settingsModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; justify-content: center; align-items: center; padding: 20px;
             opacity: 0; transition: opacity 0.3s ease;
         }
-        .modal-content { 
-            background: var(--bg-card); padding: 24px; border: var(--border); border-radius: var(--radius); 
-            width: 100%; max-width: 400px; transform: translateY(20px); transition: transform 0.3s ease;
-        }
+        .modal-content { background: var(--bg-card); padding: 24px; border: var(--border); border-radius: var(--radius); width: 100%; max-width: 400px; transform: translateY(20px); transition: transform 0.3s ease; }
         #settingsModal.show { opacity: 1; }
         #settingsModal.show .modal-content { transform: translateY(0); }
 
-        /* Микрофон */
         .textarea-wrapper { position: relative; }
-        .mic-btn {
-            position: absolute; right: 12px; bottom: 12px; background: rgba(255,255,255,0.05); border: none;
-        }
+        .mic-btn { position: absolute; right: 12px; bottom: 12px; background: rgba(255,255,255,0.05); border: none; }
         .mic-btn.recording { animation: pulse 1.5s infinite; background: rgba(239, 68, 68, 0.2); color: #ef4444;}
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="logo">Лист<span>.</span></div>
-        <button class="btn-icon" onclick="openSettings()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        </button>
-    </header>
-
-    <nav>
-        <button class="nav-btn active" onclick="switchTab('today')">Сегодня</button>
-        <button class="nav-btn" onclick="switchTab('history')">История</button>
-        <button class="nav-btn" onclick="switchTab('dictionary')">Словарь</button>
-    </nav>
-
-    <!-- СЕГОДНЯ -->
-    <main id="today" class="view active">
-        <div class="header-stats">
-            <span id="currentDate"></span>
-            <span class="streak" id="streakCount">🔥 0 дней подряд</span>
+    <!-- ВХОД -->
+    <div id="authScreen">
+        <div class="auth-card">
+            <div class="auth-logo">Лист<span>.</span></div>
+            <div class="auth-subtitle">Синхронизация ПК ↔ Телефон</div>
+            
+            <input type="text" id="username" placeholder="Никнейм" autocomplete="off">
+            <input type="password" id="password" placeholder="Пароль">
+            
+            <button class="btn-primary" onclick="handleAuth()" style="margin-top: 20px;">Войти / Зарегистрироваться</button>
         </div>
+    </div>
 
-        <div class="card">
-            <div class="form-group flex-row">
-                <div style="flex: 3;">
-                    <label>Книга</label>
-                    <select id="bookSelect"></select>
-                </div>
-                <button onclick="addBook()" style="flex: 1; margin-top: 26px;">＋ Новая</button>
-            </div>
-
-            <div class="form-group">
-                <label>Страница остановки</label>
-                <input type="number" id="pageInput" placeholder="Например: 142">
-            </div>
-
-            <div class="form-group">
-                <label>Вспомни вчерашнее</label>
-                <textarea id="yesterdayMemory" rows="2" placeholder="О чём читал вчера?"></textarea>
-            </div>
-
-            <div class="form-group textarea-wrapper" style="margin-bottom: 0;">
-                <label>Что запомнил сегодня?</label>
-                <div class="help-text" style="margin-bottom: 8px;">Перескажи вслух, затем запиши 1-3 предложения.</div>
-                <textarea id="todayMemory" rows="4" placeholder="Пиши сюда..."></textarea>
-                <button id="micBtn" class="btn-icon mic-btn" onclick="toggleVoiceInput()" title="Голосовой ввод" style="display: none;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+    <!-- ПРИЛОЖЕНИЕ -->
+    <div id="appScreen" class="container">
+        <header>
+            <div class="logo">Лист<span>.</span></div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span id="displayUser" style="font-size: 14px; color: var(--text-muted);"></span>
+                <button class="btn-icon" onclick="openSettings()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
             </div>
-        </div>
+        </header>
 
-        <!-- БЛОК ТЕСТА -->
-        <div class="card quiz-card" id="quizContainer">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <strong style="color: var(--accent);">Мини-тест</strong>
-                <span id="quizCounter" style="font-size: 13px; color: var(--text-muted);"></span>
+        <nav>
+            <button class="nav-btn active" onclick="switchTab('today')">Сегодня</button>
+            <button class="nav-btn" onclick="switchTab('history')">История</button>
+            <button class="nav-btn" onclick="switchTab('dictionary')">Словарь</button>
+        </nav>
+
+        <!-- СЕГОДНЯ -->
+        <main id="today" class="view active">
+            <div class="header-stats">
+                <span id="currentDate"></span>
+                <span class="streak" id="streakCount">🔥 0 дней подряд</span>
             </div>
-            
-            <!-- Если слов мало -->
-            <div id="quizEmptyState" class="quiz-empty">
-                Добавьте минимум 3 слова в словарь, чтобы разблокировать проверку памяти.
+
+            <div class="card">
+                <div class="form-group flex-row">
+                    <div style="flex: 3;">
+                        <label>Книга</label>
+                        <select id="bookSelect"></select>
+                    </div>
+                    <button onclick="addBook()" style="flex: 1; margin-top: 26px;">＋ Новая</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Страница остановки</label>
+                    <input type="number" id="pageInput" placeholder="Например: 142">
+                </div>
+
+                <div class="form-group">
+                    <label>Вспомни вчерашнее</label>
+                    <textarea id="yesterdayMemory" rows="2" placeholder="О чём читал вчера?"></textarea>
+                </div>
+
+                <div class="form-group textarea-wrapper" style="margin-bottom: 0;">
+                    <label>Что запомнил сегодня?</label>
+                    <div class="help-text" style="margin-bottom: 8px;">Перескажи вслух, затем запиши.</div>
+                    <textarea id="todayMemory" rows="4" placeholder="Пиши сюда..."></textarea>
+                    <button id="micBtn" class="btn-icon mic-btn" onclick="toggleVoiceInput()" style="display: none;" title="Голосовой ввод (Работает в Chrome/Edge)">🎤</button>
+                </div>
             </div>
 
-            <!-- Сам тест -->
-            <div id="quizActiveState" style="display: none;">
-                <div class="quiz-progress"><div class="quiz-bar" id="quizBar"></div></div>
-                <p id="quizWord" style="font-size: 20px; font-weight: 600; margin-bottom: 20px; text-align: center; letter-spacing: 0.5px;"></p>
-                <div id="quizOptions"></div>
+            <!-- ТЕСТ -->
+            <div class="card quiz-card" id="quizContainer">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <strong style="color: var(--accent);">Мини-тест</strong>
+                    <span id="quizCounter" style="font-size: 13px; color: var(--text-muted);"></span>
+                </div>
+                
+                <div id="quizEmptyState" class="quiz-empty">Добавьте минимум 3 слова, чтобы разблокировать проверку.</div>
+
+                <div id="quizActiveState" style="display: none;">
+                    <div class="quiz-progress"><div class="quiz-bar" id="quizBar"></div></div>
+                    <p id="quizWord" style="font-size: 20px; font-weight: 600; margin-bottom: 20px; text-align: center;"></p>
+                    <div id="quizOptions"></div>
+                </div>
             </div>
-        </div>
 
-        <!-- ДОБАВЛЕНИЕ СЛОВА -->
-        <button class="word-toggle" onclick="toggleAddWord()">＋ Сохранить новое слово</button>
-        
-        <div id="addWordForm">
-            <div class="form-group" style="margin-bottom: 12px;">
-                <input type="text" id="newWord" placeholder="Новое слово или термин">
+            <button class="word-toggle" onclick="toggleAddWord()">＋ Сохранить новое слово</button>
+            <div id="addWordForm">
+                <input type="text" id="newWord" placeholder="Новое слово или термин" style="margin-bottom: 12px;">
+                <input type="text" id="newMeaning" placeholder="Объяснение своими словами" style="margin-bottom: 16px;">
+                <button class="btn-primary" onclick="saveWord()">Добавить в словарь</button>
             </div>
-            <div class="form-group" style="margin-bottom: 16px;">
-                <input type="text" id="newMeaning" placeholder="Объяснение своими словами">
+
+            <button class="btn-primary" onclick="saveDay()" style="margin-bottom: 40px;">✓ Завершить чтение</button>
+        </main>
+
+        <!-- ИСТОРИЯ -->
+        <main id="history" class="view">
+            <div class="card">
+                <h2 style="margin-bottom: 16px; font-size: 18px;">История записей</h2>
+                <div id="historyList"></div>
             </div>
-            <button class="btn-primary" onclick="saveWord()" style="padding: 12px; font-size: 15px;">Добавить в словарь</button>
-        </div>
+        </main>
 
-        <button class="btn-primary" onclick="saveDay()" style="margin-bottom: 40px;">✓ Завершить чтение</button>
-    </main>
+        <!-- СЛОВАРЬ -->
+        <main id="dictionary" class="view">
+            <div class="card">
+                <h2 style="margin-bottom: 16px; font-size: 18px;">Словарь</h2>
+                <div id="dictList"></div>
+            </div>
+        </main>
+    </div>
 
-    <!-- ИСТОРИЯ -->
-    <main id="history" class="view">
-        <div class="card">
-            <h2 style="margin-bottom: 16px; font-size: 18px;">История записей</h2>
-            <div id="historyList"></div>
-        </div>
-    </main>
-
-    <!-- СЛОВАРЬ -->
-    <main id="dictionary" class="view">
-        <div class="card">
-            <h2 style="margin-bottom: 8px; font-size: 18px;">Словарь</h2>
-            <p class="help-text" style="margin-bottom: 16px;">Слова используются для генерации ежедневных тестов.</p>
-            <div id="dictList"></div>
-        </div>
-    </main>
-
-    <!-- МОДАЛКА НАСТРОЕК -->
+    <!-- НАСТРОЙКИ -->
     <div id="settingsModal">
         <div class="modal-content">
-            <h2 style="margin-bottom: 20px; font-size: 18px;">Резервное копирование</h2>
-            <button onclick="downloadBackup()" style="width: 100%; margin-bottom: 12px;">↓ Скачать данные</button>
-            <button onclick="document.getElementById('uploadFile').click()" style="width: 100%; margin-bottom: 16px;">↑ Загрузить данные</button>
-            <input type="file" id="uploadFile" style="display: none;" accept=".json" onchange="uploadBackup(event)">
-            
-            <p class="help-text" style="text-align: center; margin-bottom: 20px;">
-                Данные хранятся только в памяти этого браузера.
-            </p>
+            <h2 style="margin-bottom: 20px; font-size: 18px;">Аккаунт</h2>
+            <button onclick="handleLogout()" style="width: 100%; margin-bottom: 12px; border-color: #ef4444; color: #f87171; background: rgba(239, 68, 68, 0.1);">Выйти из аккаунта</button>
             <button onclick="closeSettings()" style="width: 100%; border: none; background: #27272a;">Закрыть</button>
         </div>
     </div>
 
 <script>
-    // --- ДАННЫЕ И СОСТОЯНИЕ ---
-    let appData = {
-        books: [],
-        lastBook: "",
-        words: [],
-        history: [],
-        streak: { count: 0, lastDate: "" },
-        draft: { page: "", yesterday: "", today: "" }
+    // --- 1. НАСТРОЙКА FIREBASE (ВСТАВЬ СВОИ КЛЮЧИ СЮДА!) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAgiIDFHUwZ7r4w-yq99CTuWc8hnSqIyA8",
+        authDomain: "sheet-f17cc.firebaseapp.com",
+        databaseURL: "https://sheet-f17cc-default-rtdb.firebaseio.com",
+        projectId: "sheet-f17cc",
+        storageBucket: "sheet-f17cc.firebasestorage.app",
+        messagingSenderId: "1016307575651",
+        appId: "1:1016307575651:web:d72faf2485c26f9edfc156"
     };
 
-    const TODAY_STR = new Date().toLocaleDateString('ru-RU');
+    // Инициализация Firebase (если ключи вставлены)
+    let db = null;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+    } catch(e) {
+        console.log("Firebase не настроен. Работает локальный режим.");
+    }
 
-    // --- ИНИЦИАЛИЗАЦИЯ ---
-    window.onload = () => {
-        loadData();
+    // --- 2. ПЕРЕМЕННЫЕ ---
+    let currentUser = null;
+    let appData = getEmptyData();
+
+    function getEmptyData() {
+        return { books: [], lastBook: "", words: [], history: [], streak: { count: 0, lastDate: "" }, draft: { page: "", yesterday: "", today: "" } };
+    }
+
+    // --- 3. ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ ---
+    function handleAuth() {
+        const user = document.getElementById('username').value.trim().toLowerCase();
+        const pass = document.getElementById('password').value.trim();
+        
+        if (!user || !pass) return alert("Введите ник и пароль!");
+
+        currentUser = user;
+        localStorage.setItem('listActiveUser', user);
+        showApp();
+
+        // Подписываемся на изменения в реальном времени из Облака
+        if (db) {
+            db.ref('users/' + currentUser).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    appData = data;
+                    initUI();
+                    initQuiz();
+                }
+            });
+        }
+    }
+
+    function saveData() {
+        if (!currentUser) return;
+        
+        // 1. Сохранение локально
+        localStorage.setItem(`listData_${currentUser}`, JSON.stringify(appData));
+        
+        // 2. Мгновенная отправка в Облако (на телефон/ПК)
+        if (db) {
+            db.ref('users/' + currentUser).set(appData);
+        }
+    }
+
+    function handleLogout() {
+        if (db && currentUser) db.ref('users/' + currentUser).off();
+        currentUser = null;
+        localStorage.removeItem('listActiveUser');
+        document.getElementById('appScreen').style.display = 'none';
+        document.getElementById('authScreen').style.display = 'flex';
+        closeSettings();
+    }
+
+    function showApp() {
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('appScreen').style.display = 'block';
+        document.getElementById('displayUser').innerText = `@${currentUser}`;
+        
+        // Локальная загрузка до того, как ответит облако
+        const saved = localStorage.getItem(`listData_${currentUser}`);
+        if (saved) appData = { ...getEmptyData(), ...JSON.parse(saved) };
+        
         checkStreak();
         initUI();
         initVoiceRecognition();
         initAutoSave();
         initQuiz();
-    };
+    }
 
-    function loadData() {
-        const saved = localStorage.getItem('listAppDataDark');
-        if (saved) {
-            appData = { ...appData, ...JSON.parse(saved) };
-            if(!appData.draft) appData.draft = { page: "", yesterday: "", today: "" };
+    // --- 4. ЛОГИКА ДНЕВНИКА ---
+    window.onload = () => {
+        const savedUser = localStorage.getItem('listActiveUser');
+        if (savedUser) {
+            document.getElementById('username').value = savedUser;
+            document.getElementById('password').value = "dummy"; 
+            handleAuth();
         }
-    }
-
-    function saveData() {
-        localStorage.setItem('listAppDataDark', JSON.stringify(appData));
-    }
+    };
 
     function checkStreak() {
         const todayStr = new Date().toDateString();
         const yesterday = new Date(Date.now() - 86400000).toDateString();
-        
         if (appData.streak.lastDate !== todayStr && appData.streak.lastDate !== yesterday && appData.streak.lastDate !== "") {
-            appData.streak.count = 0;
-            saveData();
+            appData.streak.count = 0; saveData();
         }
     }
 
@@ -427,42 +344,30 @@
         const options = { weekday: 'long', day: 'numeric', month: 'long' };
         let dateStr = new Date().toLocaleDateString('ru-RU', options);
         document.getElementById('currentDate').innerText = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-        
         document.getElementById('streakCount').innerText = `🔥 ${appData.streak.count} дн. подряд`;
-
+        
         renderBookSelect();
-
         document.getElementById('pageInput').value = appData.draft.page || "";
         document.getElementById('yesterdayMemory').value = appData.draft.yesterday || "";
         document.getElementById('todayMemory').value = appData.draft.today || "";
-
-        renderHistory();
-        renderDict();
+        renderHistory(); renderDict();
     }
 
     function switchTab(tabId) {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-        
         document.getElementById(tabId).classList.add('active');
         event.currentTarget.classList.add('active');
-
         if(tabId === 'history') renderHistory();
         if(tabId === 'dictionary') renderDict();
     }
 
-    // --- КНИГИ ---
     function renderBookSelect() {
         const select = document.getElementById('bookSelect');
-        select.innerHTML = '';
-        if (appData.books.length === 0) {
-            select.innerHTML = '<option value="">Нет книг</option>';
-            return;
-        }
+        select.innerHTML = appData.books.length ? '' : '<option value="">Нет книг</option>';
         appData.books.forEach(book => {
             const opt = document.createElement('option');
-            opt.value = book;
-            opt.innerText = book;
+            opt.value = opt.innerText = book;
             if (book === appData.lastBook) opt.selected = true;
             select.appendChild(opt);
         });
@@ -470,17 +375,12 @@
 
     function addBook() {
         const title = prompt("Введите название книги:");
-        if (title && title.trim() !== "") {
-            if(!appData.books.includes(title.trim())){
-                appData.books.push(title.trim());
-                appData.lastBook = title.trim();
-                saveData();
-                renderBookSelect();
-            }
+        if (title && title.trim() !== "" && !appData.books.includes(title.trim())) {
+            appData.books.push(title.trim()); appData.lastBook = title.trim();
+            saveData(); renderBookSelect();
         }
     }
 
-    // --- СЛОВАРЬ (ДОБАВЛЕНИЕ) ---
     function toggleAddWord() {
         const form = document.getElementById('addWordForm');
         form.style.display = form.style.display === 'block' ? 'none' : 'block';
@@ -491,304 +391,140 @@
         const meaning = document.getElementById('newMeaning').value.trim();
         if (word && meaning) {
             appData.words.push({ id: Date.now(), word, meaning });
-            saveData();
-            document.getElementById('newWord').value = "";
-            document.getElementById('newMeaning').value = "";
-            toggleAddWord();
-            initQuiz();
+            saveData(); document.getElementById('newWord').value = document.getElementById('newMeaning').value = "";
+            toggleAddWord(); initQuiz();
         }
     }
 
-    // --- СОХРАНЕНИЕ ДНЯ ---
     function saveDay() {
         const book = document.getElementById('bookSelect').value;
-        const page = document.getElementById('pageInput').value;
-        const yesterdayText = document.getElementById('yesterdayMemory').value;
-        const todayText = document.getElementById('todayMemory').value;
-
-        if (!book) return alert("Пожалуйста, добавьте книгу.");
+        if (!book) return alert("Добавьте книгу.");
         
-        const entry = { date: TODAY_STR, book, page, yesterdayText, todayText };
+        const entry = { 
+            date: new Date().toLocaleDateString('ru-RU'), book, 
+            page: document.getElementById('pageInput').value, 
+            yesterdayText: document.getElementById('yesterdayMemory').value, 
+            todayText: document.getElementById('todayMemory').value 
+        };
 
-        const existingIndex = appData.history.findIndex(h => h.date === TODAY_STR);
+        const existingIndex = appData.history.findIndex(h => h.date === entry.date);
         if (existingIndex !== -1) appData.history[existingIndex] = entry;
         else appData.history.unshift(entry);
 
         const todayDateStr = new Date().toDateString();
-        if (appData.streak.lastDate !== todayDateStr) {
-            appData.streak.count++;
-            appData.streak.lastDate = todayDateStr;
-        }
+        if (appData.streak.lastDate !== todayDateStr) { appData.streak.count++; appData.streak.lastDate = todayDateStr; }
 
-        appData.lastBook = book;
-        appData.draft = { page: "", yesterday: "", today: "" };
-        
-        saveData();
-        initUI();
-        
-        // Визуальное подтверждение
-        const btn = document.querySelector('main#today > .btn-primary:last-child');
-        const origText = btn.innerText;
-        btn.innerText = "Сохранено!";
-        btn.style.background = "#22c55e";
-        setTimeout(() => {
-            btn.innerText = origText;
-            btn.style.background = "";
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 1500);
+        appData.lastBook = book; appData.draft = { page: "", yesterday: "", today: "" };
+        saveData(); initUI();
+        alert("Сохранено в облаке!");
     }
 
     function initAutoSave() {
-        const fields = ['pageInput', 'yesterdayMemory', 'todayMemory'];
-        const keys = ['page', 'yesterday', 'today'];
-        fields.forEach((id, index) => {
-            document.getElementById(id).addEventListener('input', (e) => {
-                appData.draft[keys[index]] = e.target.value;
-                saveData();
-            });
+        ['pageInput', 'yesterdayMemory', 'todayMemory'].forEach((id, index) => {
+            const keys = ['page', 'yesterday', 'today'];
+            document.getElementById(id).addEventListener('input', (e) => { appData.draft[keys[index]] = e.target.value; saveData(); });
         });
     }
 
-    // --- ГОЛОСОВОЙ ВВОД ---
+    // --- ГОЛОСОВОЙ ВВОД (Для Chrome и Edge) ---
     let recognition;
     function initVoiceRecognition() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const micBtn = document.getElementById('micBtn');
-        
         if (SpeechRecognition) {
             micBtn.style.display = 'block';
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ru-RU';
+            recognition = new SpeechRecognition(); 
+            recognition.lang = 'ru-RU'; 
             recognition.interimResults = false;
             
-            recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript;
-                const textarea = document.getElementById('todayMemory');
-                textarea.value += (textarea.value ? " " : "") + text + ".";
-                appData.draft.today = textarea.value;
-                saveData();
-                micBtn.classList.remove('recording');
+            recognition.onresult = (e) => {
+                const ta = document.getElementById('todayMemory');
+                ta.value += (ta.value ? " " : "") + e.results[0][0].transcript + ".";
+                appData.draft.today = ta.value; saveData(); micBtn.classList.remove('recording');
             };
-
-            recognition.onerror = () => micBtn.classList.remove('recording');
-            recognition.onend = () => micBtn.classList.remove('recording');
+            recognition.onerror = recognition.onend = () => micBtn.classList.remove('recording');
         }
     }
 
-    function toggleVoiceInput() {
-        if (!recognition) return;
-        const micBtn = document.getElementById('micBtn');
-        micBtn.classList.add('recording');
-        recognition.start();
+    function toggleVoiceInput() { 
+        if (!recognition) return alert("Ваш браузер не поддерживает ввод голосом. Используйте Chrome или Edge.");
+        document.getElementById('micBtn').classList.add('recording'); 
+        recognition.start(); 
     }
 
-    // --- МИНИ-КВИЗ (ТЕСТ) ---
+    // --- МИНИ-КВИЗ ---
     let quizState = { active: false, currentStep: 0, maxSteps: 5 };
-
     function initQuiz() {
-        const emptyState = document.getElementById('quizEmptyState');
-        const activeState = document.getElementById('quizActiveState');
-        const counter = document.getElementById('quizCounter');
-
-        // Если слов меньше 3 - показываем заглушку
+        const emptyState = document.getElementById('quizEmptyState'), activeState = document.getElementById('quizActiveState'), counter = document.getElementById('quizCounter');
         if (appData.words.length < 3) {
-            emptyState.style.display = 'block';
-            activeState.style.display = 'none';
-            counter.innerText = `${appData.words.length}/3 слов`;
-            return;
+            emptyState.style.display = 'block'; activeState.style.display = 'none'; counter.innerText = `${appData.words.length}/3 слов`; return;
         }
-
-        // Если слов достаточно - запускаем тест
-        emptyState.style.display = 'none';
-        activeState.style.display = 'block';
-        quizState.currentStep = 0;
-        quizState.maxSteps = Math.min(5, appData.words.length);
+        emptyState.style.display = 'none'; activeState.style.display = 'block';
+        quizState.currentStep = 0; quizState.maxSteps = Math.min(5, appData.words.length);
         nextQuizQuestion();
     }
 
     function nextQuizQuestion() {
         if (quizState.currentStep >= quizState.maxSteps) {
-            document.getElementById('quizActiveState').innerHTML = `
-                <div style="text-align:center; padding: 20px 0;">
-                    <div style="font-size: 32px; margin-bottom: 10px;">🎯</div>
-                    <p style="font-weight:600; color: var(--text-main);">Тест пройден!</p>
-                    <p style="font-size: 13px; color: var(--text-muted); margin-top: 5px;">Словарь свеж в памяти.</p>
-                </div>`;
-            document.getElementById('quizCounter').innerText = "";
-            return;
+            document.getElementById('quizActiveState').innerHTML = `<div style="text-align:center; padding: 20px 0;"><div style="font-size: 32px;">🎯</div><p style="font-weight:600;">Тест пройден!</p></div>`;
+            document.getElementById('quizCounter').innerText = ""; return;
         }
-
         let wordsCopy = [...appData.words].sort(() => 0.5 - Math.random());
-        let correctWord = wordsCopy[0];
-        let wrongWords = wordsCopy.slice(1, 3);
-        
-        let options = [
-            { text: correctWord.meaning, correct: true },
-            { text: wrongWords[0].meaning, correct: false },
-            { text: wrongWords[1]?.meaning || "Альтернативное значение термина", correct: false }
-        ].sort(() => 0.5 - Math.random());
+        let correctWord = wordsCopy[0], wrongWords = wordsCopy.slice(1, 3);
+        let options = [{ text: correctWord.meaning, correct: true }, { text: wrongWords[0].meaning, correct: false }, { text: wrongWords[1]?.meaning || "Иное значение", correct: false }].sort(() => 0.5 - Math.random());
 
         document.getElementById('quizCounter').innerText = `${quizState.currentStep + 1}/${quizState.maxSteps}`;
         document.getElementById('quizBar').style.width = `${(quizState.currentStep / quizState.maxSteps) * 100}%`;
         
-        // Анимация смены слова
-        const wordEl = document.getElementById('quizWord');
-        wordEl.style.opacity = 0;
-        setTimeout(() => {
-            wordEl.innerText = correctWord.word;
-            wordEl.style.opacity = 1;
-        }, 150);
+        const wordEl = document.getElementById('quizWord'); wordEl.style.opacity = 0;
+        setTimeout(() => { wordEl.innerText = correctWord.word; wordEl.style.opacity = 1; }, 150);
 
-        const optsContainer = document.getElementById('quizOptions');
-        optsContainer.innerHTML = '';
-        
+        const optsContainer = document.getElementById('quizOptions'); optsContainer.innerHTML = '';
         options.forEach(opt => {
-            const btn = document.createElement('button');
-            btn.className = 'quiz-option';
-            btn.innerText = opt.text;
-            btn.onclick = () => handleQuizAnswer(btn, opt.correct);
-            optsContainer.appendChild(btn);
+            const btn = document.createElement('button'); btn.className = 'quiz-option'; btn.innerText = opt.text;
+            btn.onclick = () => handleQuizAnswer(btn, opt.correct); optsContainer.appendChild(btn);
         });
     }
 
     function handleQuizAnswer(btn, isCorrect) {
         document.querySelectorAll('.quiz-option').forEach(b => b.disabled = true);
-        
         if (isCorrect) {
-            btn.classList.add('correct');
-            setTimeout(() => {
-                quizState.currentStep++;
-                nextQuizQuestion();
-            }, 500);
+            btn.classList.add('correct'); setTimeout(() => { quizState.currentStep++; nextQuizQuestion(); }, 500);
         } else {
             btn.classList.add('wrong');
-            document.querySelectorAll('.quiz-option').forEach(b => {
-               // Можно подсветить правильный ответ здесь
-            });
-            setTimeout(() => {
-                document.querySelectorAll('.quiz-option').forEach(b => b.disabled = false);
-                btn.classList.remove('wrong');
-            }, 800);
+            setTimeout(() => { document.querySelectorAll('.quiz-option').forEach(b => b.disabled = false); btn.classList.remove('wrong'); }, 800);
         }
     }
 
-    // --- РЕНДЕР ИСТОРИИ ---
     function renderHistory() {
-        const container = document.getElementById('historyList');
-        container.innerHTML = '';
-        
-        if (appData.history.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Здесь появятся ваши записи о чтении.</p>';
-            return;
-        }
-
-        appData.history.forEach((h, index) => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.innerHTML = `
-                <div class="item-header">
-                    <span style="font-size: 14px; font-weight: 500;">${h.date}</span>
-                    <span style="font-size: 12px; background: var(--bg-input); padding: 4px 8px; border-radius: 6px; color: var(--text-muted);">Стр. ${h.page || '?'}</span>
-                </div>
+        const container = document.getElementById('historyList'); container.innerHTML = appData.history.length ? '' : '<p style="color: var(--text-muted); font-size: 14px;">История пуста.</p>';
+        appData.history.forEach((h, i) => {
+            container.innerHTML += `<div class="list-item">
+                <div class="item-header"><span style="font-size: 14px; font-weight: 500;">${h.date}</span>
+                <span style="font-size: 12px; background: var(--bg-input); padding: 4px 8px; border-radius: 6px;">Стр. ${h.page || '?'}</span></div>
                 <div style="color: var(--accent); font-size: 14px;">${h.book}</div>
-                <div style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">${h.todayText || "Без заметок"}</div>
-                <div class="item-actions" style="text-align: right;">
-                    <button onclick="deleteHistory(${index})">Удалить</button>
-                </div>
-            `;
-            container.appendChild(div);
+                <div style="font-size: 14px; color: var(--text-muted);">${h.todayText || "Без заметок"}</div>
+                <div class="item-actions" style="text-align: right;"><button onclick="deleteHistory(${i})">Удалить</button></div>
+            </div>`;
         });
     }
 
-    function deleteHistory(index) {
-        if(confirm("Удалить запись за этот день?")) {
-            appData.history.splice(index, 1);
-            saveData();
-            renderHistory();
-        }
-    }
+    function deleteHistory(index) { if(confirm("Удалить?")) { appData.history.splice(index, 1); saveData(); renderHistory(); } }
 
-    // --- РЕНДЕР СЛОВАРЯ ---
     function renderDict() {
-        const container = document.getElementById('dictList');
-        container.innerHTML = '';
-        
-        if (appData.words.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Словарь пока пуст.</p>';
-            return;
-        }
-
-        appData.words.forEach((w, index) => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.innerHTML = `
-                <div style="font-weight: 500; font-size: 15px;">${w.word}</div>
-                <div style="font-size: 14px; color: var(--text-muted);">${w.meaning}</div>
-                <div class="item-actions" style="text-align: right;">
-                    <button onclick="deleteWord(${index})">Удалить</button>
-                </div>
-            `;
-            container.appendChild(div);
+        const container = document.getElementById('dictList'); container.innerHTML = appData.words.length ? '' : '<p style="color: var(--text-muted); font-size: 14px;">Словарь пуст.</p>';
+        appData.words.forEach((w, i) => {
+            container.innerHTML += `<div class="list-item">
+                <div style="font-weight: 500; font-size: 15px;">${w.word}</div><div style="font-size: 14px; color: var(--text-muted);">${w.meaning}</div>
+                <div class="item-actions" style="text-align: right;"><button onclick="deleteWord(${i})">Удалить</button></div>
+            </div>`;
         });
     }
 
-    function deleteWord(index) {
-        if(confirm("Удалить слово?")) {
-            appData.words.splice(index, 1);
-            saveData();
-            renderDict();
-            
-            // Если мы находимся на вкладке "Сегодня", перерисуем тест
-            if(document.getElementById('today').classList.contains('active')) {
-                initQuiz();
-            }
-        }
-    }
+    function deleteWord(index) { if(confirm("Удалить слово?")) { appData.words.splice(index, 1); saveData(); renderDict(); if(document.getElementById('today').classList.contains('active')) initQuiz(); } }
 
-    // --- НАСТРОЙКИ ---
-    function openSettings() { 
-        const modal = document.getElementById('settingsModal');
-        modal.style.display = 'flex';
-        setTimeout(() => modal.classList.add('show'), 10);
-    }
-    
-    function closeSettings() { 
-        const modal = document.getElementById('settingsModal');
-        modal.classList.remove('show');
-        setTimeout(() => modal.style.display = 'none', 300);
-    }
-
-    function downloadBackup() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-        const dlAnchorElem = document.createElement('a');
-        dlAnchorElem.setAttribute("href", dataStr);
-        dlAnchorElem.setAttribute("download", `list_backup_${new Date().toISOString().slice(0,10)}.json`);
-        dlAnchorElem.click();
-    }
-
-    function uploadBackup(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const importedData = JSON.parse(e.target.result);
-                if (importedData && importedData.history) {
-                    appData = importedData;
-                    saveData();
-                    initUI();
-                    initQuiz();
-                    closeSettings();
-                    alert("Данные успешно восстановлены!");
-                } else {
-                    alert("Неверный формат файла.");
-                }
-            } catch (err) {
-                alert("Ошибка чтения файла.");
-            }
-        };
-        reader.readAsText(file);
-    }
+    function openSettings() { const modal = document.getElementById('settingsModal'); modal.style.display = 'flex'; setTimeout(() => modal.classList.add('show'), 10); }
+    function closeSettings() { const modal = document.getElementById('settingsModal'); modal.classList.remove('show'); setTimeout(() => modal.style.display = 'none', 300); }
 </script>
 
 </body>
